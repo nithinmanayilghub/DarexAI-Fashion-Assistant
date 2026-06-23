@@ -1,0 +1,137 @@
+# DarexAI: AI Fashion Stylist & Recommendation Assistant
+
+An AI-powered fashion styling assistant using CLIP embeddings, vector search, and LLMs to provide curated outfit recommendations. Features a premium Streamlit interface, robust unit testing, and Docker deployment. Delivers personalized styling rationale with intelligent out-of-catalog request handling.
+
+---
+
+## 🗺️ System Architecture
+
+The recommendation engine is built on a modular pipeline combining semantic vision-text search and rule-based styling logic:
+
+```mermaid
+graph TD
+    %% Styling
+    classDef default fill:#f9f9f9,stroke:#333,stroke-width:1px;
+    classDef user fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
+    classDef llm fill:#ede7f6,stroke:#5e35b1,stroke-width:2px;
+    classDef db fill:#efebe9,stroke:#5d4037,stroke-width:2px;
+    classDef engine fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+
+    User([👤 User Chat Input]) -->|1. 'I need a beach outfit'| StylistLLM[🧠 Stylist LLM]
+    
+    subgraph Catalog Memory
+        VectorDB[(🗄️ Vector Database)]
+    end
+    
+    StylistLLM -->|2. Formulates Search Query| VectorDB
+    VectorDB -->|3. Retrieves Hero Item e.g., Linen Shirt| Matchmaker[🟢 Compatibility Engine]
+    
+    subgraph Compatibility Rules
+        Rules[📚 Curated Style Pairings] --> Matchmaker
+    end
+    
+    Matchmaker -->|4. Finds matching Pants, Shoes, & Accessories| Assemble[👔 Complete Outfit Generator]
+    Assemble -->|5. Sends outfit list| StylistLLM
+    StylistLLM -->|6. Generates Stylist Rationale & Recommendation| User
+    
+    class User user;
+    class StylistLLM llm;
+    class VectorDB db;
+    class Matchmaker,Assemble engine;
+```
+
+### Core Components
+*   **The Brain (Stylist LLM)**: Powered by Gemini. Analyzes user messages, determines styling rules, performs intent mapping, validates product match relevance, and explains styling decisions.
+*   **The Eyes (CLIP Model)**: Generates high-dimensional image/text embeddings, enabling visual-semantic retrieval from the fashion catalog.
+*   **The Memory (Vector Store)**: Indexes, caches, and filters catalog embeddings (by gender, category, and similarity) for sub-millisecond retrieval.
+*   **The Matchmaker (Compatibility Engine)**: Uses rule-based logic derived from 25 expert-curated outfits to assemble matching items (topwear, bottomwear, footwear, accessories) based on the "Hero" item retrieved.
+
+---
+
+## 📂 Project Structure
+
+```text
+DarexAI/
+├── src/                        # Main Application Code
+│   ├── app.py                  # Streamlit Web App Interface
+│   ├── assistant.py            # Stylist Agent Orchestration (Gemini LLM)
+│   ├── compatibility.py        # Styling Rules & Matchmaker Engine
+│   ├── config.py               # Constants, Paths & Hyperparameters
+│   ├── data_loader.py          # Catalog Preprocessing & Sanitization
+│   ├── embedder.py             # CLIP Embedding Extraction
+│   └── vector_store.py         # Vector Indexing & Hybrid Retrieval
+│
+├── tests/                      # Testing Suite (18 Unit & Integration Tests)
+│   ├── test_assistant.py
+│   ├── test_compatibility.py
+│   ├── test_data_loader.py
+│   ├── test_embedder.py
+│   └── test_vector_store.py
+│
+├── ML-TASK/                    # Catalog Dataset (Provided CSVs & Images)
+│   ├── products.csv            # 68 catalog items
+│   ├── outfits.csv             # 25 expert combinations
+│   └── images/                 # Catalog product images
+│
+├── workbooks/
+│   └── Notebook.ipynb          # Exploratory Data Analysis & Validation
+│
+├── Dockerfile                  # Single-container application build
+└── docker-compose.yml          # Container configuration with volume cache mounting
+```
+
+---
+
+## 🚀 Getting Started
+
+### 📋 Prerequisites
+- Python 3.10 or higher
+- A **Gemini API Key** (optional, fallback offline mode is supported automatically)
+
+### 🛠️ Local Setup
+1. **Clone the repository**:
+   ```bash
+   git clone <your-repository-url>
+   cd DarexAI
+   ```
+
+2. **Set up a virtual environment and install dependencies**:
+   ```bash
+   python -m venv .venv
+   .venv\Scripts\activate      # Windows
+   source .venv/bin/activate    # macOS/Linux
+   pip install -r pyproject.toml  # or use uv / pip install .
+   ```
+
+3. **Configure Environment Variables**:
+   Create a `.env` file in the root directory (this is automatically ignored by Git):
+   ```env
+   GEMINI_API_KEY=your_gemini_api_key_here
+   ```
+
+4. **Launch the Application**:
+   ```bash
+   streamlit run src/app.py
+   ```
+   Open `http://localhost:8501` in your browser.
+
+---
+
+## 🐳 Docker Deployment
+Run the entire application in a container with persistent model and embedding caching:
+
+```bash
+# Start container
+docker-compose up --build
+```
+The Streamlit app will be available on `http://localhost:8501`.
+
+---
+
+## 🧪 Running Automated Tests
+The repository includes a comprehensive suite of **18 tests** validating data integrity, semantic retrieval boundaries, and conversational logic.
+
+To run the tests:
+```bash
+pytest -v
+```
