@@ -5,9 +5,9 @@ class CompatibilityEngine:
     def __init__(self, outfits_df=None):
         self.outfits_df = outfits_df if outfits_df is not None else data_loader.load_outfits()
         self.category_groups = {
-            'topwear': ['formal-shirts', 'casual-shirts', 'party-shirts', 'tshirts', 'polo-tshirts', 'sweatshirts', 'tops', 'activewear', 'sweaters'],
+            'topwear': ['formal-shirts', 'casual-shirts', 'party-shirts', 'tshirts', 'polo-tshirts', 'sweatshirts', 'tops', 'activewear', 'sweaters', 'linen-shirts'],
             'bottomwear': ['trousers', 'jeans', 'chinos', 'shorts', 'track-pants', 'skirts', 'leggings'],
-            'one_piece': ['suits', 'sherwanis', 'party-dresses', 'wedding-sarees', 'sharara-sets', 'casual-dresses', 'maxi-dresses', 'co-ord-sets', 'salwar-suits'],
+            'one_piece': ['suits', 'sherwanis', 'party-dresses', 'wedding-sarees', 'sharara-sets', 'casual-dresses', 'maxi-dresses', 'co-ord-sets', 'salwar-suits', 'kurta-sets'],
             'footwear': ['running-shoes', 'sneakers', 'ethnic-footwear', 'heels', 'boots', 'flats', 'formal-shoes', 'loafers', 'sandals'],
             'layer': ['nehru-jackets', 'denim-jackets', 'long-coats', 'blazers'],
             'accessory': ['necklaces', 'clutches', 'handbags', 'earrings', 'sunglasses', 'watches', 'caps']
