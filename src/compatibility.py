@@ -1,17 +1,37 @@
 import pandas as pd
-from src import data_loader, vector_store
+import json
+import os
+from src import data_loader, vector_store, config
 
 class CompatibilityEngine:
     def __init__(self, outfits_df=None):
         self.outfits_df = outfits_df if outfits_df is not None else data_loader.load_outfits()
-        self.category_groups = {
-            'topwear': ['formal-shirts', 'casual-shirts', 'party-shirts', 'tshirts', 'polo-tshirts', 'sweatshirts', 'tops', 'activewear', 'sweaters', 'linen-shirts'],
-            'bottomwear': ['trousers', 'jeans', 'chinos', 'shorts', 'track-pants', 'skirts', 'leggings'],
-            'one_piece': ['suits', 'sherwanis', 'party-dresses', 'wedding-sarees', 'sharara-sets', 'casual-dresses', 'maxi-dresses', 'co-ord-sets', 'salwar-suits', 'kurta-sets'],
-            'footwear': ['running-shoes', 'sneakers', 'ethnic-footwear', 'heels', 'boots', 'flats', 'formal-shoes', 'loafers', 'sandals'],
-            'layer': ['nehru-jackets', 'denim-jackets', 'long-coats', 'blazers'],
-            'accessory': ['necklaces', 'clutches', 'handbags', 'earrings', 'sunglasses', 'watches', 'caps']
-        }
+        
+        # Load styling configuration from external config file
+        config_path = os.path.join(config.BASE_DIR, 'src', 'styling_config.json')
+        if os.path.exists(config_path):
+            with open(config_path, 'r', encoding='utf-8') as f:
+                cfg = json.load(f)
+                self.category_groups = cfg.get('category_groups', {})
+                self.compatibility_rules = cfg.get('compatibility_rules', {})
+        else:
+            # Fallbacks in case config file is missing
+            self.category_groups = {
+                'topwear': ['formal-shirts', 'casual-shirts', 'party-shirts', 'tshirts', 'polo-tshirts', 'sweatshirts', 'tops', 'activewear', 'sweaters', 'linen-shirts'],
+                'bottomwear': ['trousers', 'jeans', 'chinos', 'shorts', 'track-pants', 'skirts', 'leggings'],
+                'one_piece': ['suits', 'sherwanis', 'party-dresses', 'wedding-sarees', 'sharara-sets', 'casual-dresses', 'maxi-dresses', 'co-ord-sets', 'salwar-suits', 'kurta-sets'],
+                'footwear': ['running-shoes', 'sneakers', 'ethnic-footwear', 'heels', 'boots', 'flats', 'formal-shoes', 'loafers', 'sandals'],
+                'layer': ['nehru-jackets', 'denim-jackets', 'long-coats', 'blazers'],
+                'accessory': ['necklaces', 'clutches', 'handbags', 'earrings', 'sunglasses', 'watches', 'caps']
+            }
+            self.compatibility_rules = {
+                "one_piece": ["footwear", "accessory"],
+                "topwear": ["bottomwear", "footwear", "accessory"],
+                "bottomwear": ["topwear", "footwear", "accessory"],
+                "footwear": ["topwear", "bottomwear", "accessory"],
+                "layer": ["topwear", "bottomwear", "footwear"],
+                "accessory": ["topwear", "bottomwear", "footwear"]
+            }
 
     def get_category_group(self, category):
         """Identifies which styling group a category belongs to."""
@@ -86,18 +106,8 @@ class CompatibilityEngine:
         # 2. Hybrid Matching: Build an outfit dynamically using category pairs & CLIP similarity
         hero_group = self.get_category_group(hero_category)
         
-        # Determine what other categories we need to search for
-        needed_groups = []
-        if hero_group == 'one_piece':
-            needed_groups = ['footwear', 'accessory']
-        elif hero_group == 'topwear':
-            needed_groups = ['bottomwear', 'footwear', 'accessory']
-        elif hero_group == 'bottomwear':
-            needed_groups = ['topwear', 'footwear', 'accessory']
-        elif hero_group == 'footwear':
-            needed_groups = ['topwear', 'bottomwear', 'accessory']
-        else:  # accessory or layer
-            needed_groups = ['topwear', 'bottomwear', 'footwear']
+        # Determine what other categories we need to search for based on loaded config rules
+        needed_groups = self.compatibility_rules.get(hero_group, ['topwear', 'bottomwear', 'footwear'])
             
         outfit_items = {'hero': hero_product}
         

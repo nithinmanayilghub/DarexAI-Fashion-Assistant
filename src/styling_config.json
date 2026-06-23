@@ -1,0 +1,71 @@
+{
+  "category_groups": {
+    "topwear": [
+      "formal-shirts",
+      "casual-shirts",
+      "party-shirts",
+      "tshirts",
+      "polo-tshirts",
+      "sweatshirts",
+      "tops",
+      "activewear",
+      "sweaters",
+      "linen-shirts"
+    ],
+    "bottomwear": [
+      "trousers",
+      "jeans",
+      "chinos",
+      "shorts",
+      "track-pants",
+      "skirts",
+      "leggings"
+    ],
+    "one_piece": [
+      "suits",
+      "sherwanis",
+      "party-dresses",
+      "wedding-sarees",
+      "sharara-sets",
+      "casual-dresses",
+      "maxi-dresses",
+      "co-ord-sets",
+      "salwar-suits",
+      "kurta-sets"
+    ],
+    "footwear": [
+      "running-shoes",
+      "sneakers",
+      "ethnic-footwear",
+      "heels",
+      "boots",
+      "flats",
+      "formal-shoes",
+      "loafers",
+      "sandals"
+    ],
+    "layer": [
+      "nehru-jackets",
+      "denim-jackets",
+      "long-coats",
+      "blazers"
+    ],
+    "accessory": [
+      "necklaces",
+      "clutches",
+      "handbags",
+      "earrings",
+      "sunglasses",
+      "watches",
+      "caps"
+    ]
+  },
+  "compatibility_rules": {
+    "one_piece": ["footwear", "accessory"],
+    "topwear": ["bottomwear", "footwear", "accessory"],
+    "bottomwear": ["topwear", "footwear", "accessory"],
+    "footwear": ["topwear", "bottomwear", "accessory"],
+    "layer": ["topwear", "bottomwear", "footwear"],
+    "accessory": ["topwear", "bottomwear", "footwear"]
+  }
+}
