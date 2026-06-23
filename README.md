@@ -1,46 +1,55 @@
 # DarexAI: AI Fashion Stylist & Recommendation Assistant
 
-An AI-powered fashion styling assistant using CLIP embeddings, vector search, and LLMs to provide curated outfit recommendations. Features a premium Streamlit interface, robust unit testing, and Docker deployment. Delivers personalized styling rationale with intelligent out-of-catalog request handling.
+An AI-powered fashion styling assistant using CLIP embeddings, vector search, and LLMs to provide curated outfit recommendations. Features a decoupled architecture with a FastAPI backend, a premium Streamlit web frontend, robust unit/integration testing, and Docker-compose orchestration. Delivers personalized styling rationale with intelligent out-of-catalog request handling.
 
 ---
 
 ## 🗺️ System Architecture
 
-The recommendation engine is built on a modular pipeline combining semantic vision-text search and rule-based styling logic:
+The recommendation engine is built on a modular pipeline combining semantic vision-text search and rule-based styling logic, decoupled into a separate frontend and API backend service:
 
 ```mermaid
 graph TD
     %% Styling
     classDef default fill:#f9f9f9,stroke:#333,stroke-width:1px;
     classDef user fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
+    classDef frontend fill:#fff9db,stroke:#f59f00,stroke-width:2px;
+    classDef backend fill:#e3faf2,stroke:#0ca678,stroke-width:2px;
     classDef llm fill:#ede7f6,stroke:#5e35b1,stroke-width:2px;
     classDef db fill:#efebe9,stroke:#5d4037,stroke-width:2px;
     classDef engine fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
 
-    User([👤 User Chat Input]) -->|1. 'I need a beach outfit'| StylistLLM[🧠 Stylist LLM]
-    
-    subgraph Catalog Memory
-        VectorDB[(🗄️ Vector Database)]
+    User([👤 User]) -->|1. Interactive Chat| Streamlit[✨ Streamlit Web UI]
+    Streamlit -->|2. POST /api/chat| FastAPI[🚀 FastAPI Backend API]
+
+    subgraph FastAPI Backend Engine
+        FastAPI -->|3. Parses Intent| StylistLLM[🧠 Stylist LLM]
+        StylistLLM -->|4. Query Vector Index| VectorDB[(🗄️ Vector Store)]
+        VectorDB -->|5. Retrieves Hero Product| Matchmaker[🟢 Compatibility Engine]
+        
+        subgraph Rules
+            RulesConfig[📚 styling_config.json] --> Matchmaker
+        end
+        
+        Matchmaker -->|6. Pair Products| Assemble[👔 Outfit Generator]
+        Assemble -->|7. Generate Explanation| StylistLLM
+        StylistLLM -->|8. Formats Response| FastAPI
     end
-    
-    StylistLLM -->|2. Formulates Search Query| VectorDB
-    VectorDB -->|3. Retrieves Hero Item e.g., Linen Shirt| Matchmaker[🟢 Compatibility Engine]
-    
-    subgraph Compatibility Rules
-        Rules[📚 Curated Style Pairings] --> Matchmaker
-    end
-    
-    Matchmaker -->|4. Finds matching Pants, Shoes, & Accessories| Assemble[👔 Complete Outfit Generator]
-    Assemble -->|5. Sends outfit list| StylistLLM
-    StylistLLM -->|6. Generates Stylist Rationale & Recommendation| User
-    
+
+    FastAPI -->|9. JSON Response| Streamlit
+    Streamlit -->|10. Renders Styled Outfit| User
+
     class User user;
+    class Streamlit frontend;
+    class FastAPI backend;
     class StylistLLM llm;
     class VectorDB db;
     class Matchmaker,Assemble engine;
 ```
 
 ### Core Components
+*   **The Waiter (Streamlit Frontend - `app.py`)**: Renders a premium, fully interactive chat interface. Takes user text queries, passes user filter overrides, sends API requests to the backend, and renders stylish outfit product cards.
+*   **The Service Desk (FastAPI Backend - `main.py`)**: Exposes REST endpoints (`/api/chat`, `/health`, and `/api/rebuild-index`) to isolate search, database loader, and LLM processing logic.
 *   **The Brain (Stylist LLM)**: Powered by Gemini. Analyzes user messages, determines styling rules, performs intent mapping, validates product match relevance, and explains styling decisions.
 *   **The Eyes (CLIP Model)**: Generates high-dimensional image/text embeddings, enabling visual-semantic retrieval from the fashion catalog.
 *   **The Memory (Vector Store)**: Indexes, caches, and filters catalog embeddings (by gender, category, and similarity) for sub-millisecond retrieval.
@@ -55,7 +64,8 @@ graph TD
 ```text
 DarexAI/
 ├── src/                        # Main Application Code
-│   ├── app.py                  # Streamlit Web App Interface
+│   ├── app.py                  # Streamlit Web App Interface (Frontend)
+│   ├── main.py                 # FastAPI Backend Server Application (Backend)
 │   ├── assistant.py            # Stylist Agent Orchestration (Gemini LLM)
 │   ├── compatibility.py        # Styling Rules & Matchmaker Engine
 │   ├── config.py               # Constants, Paths & Hyperparameters
@@ -65,7 +75,8 @@ DarexAI/
 │   ├── styling_config.json     # Configuration file for categories & match rules
 │   └── vector_store.py         # Vector Indexing & Hybrid Retrieval
 │
-├── tests/                      # Testing Suite (18 Unit & Integration Tests)
+├── tests/                      # Testing Suite (Unit & Integration Tests)
+│   ├── test_api.py             # Integration tests for FastAPI endpoints
 │   ├── test_assistant.py
 │   ├── test_compatibility.py
 │   ├── test_data_loader.py
@@ -115,10 +126,21 @@ DarexAI/
    ```
 
 4. **Launch the Application**:
-   ```bash
-   streamlit run src/app.py
-   ```
-   Open `http://localhost:8501` in your browser.
+   You need to start **both** the backend and the frontend servers:
+
+   *   **Start the Backend API:**
+       ```bash
+       python -m uvicorn src.main:app --reload --port 8000
+       ```
+       *(If you have Python launcher path issues on Windows, run: `.venv\Scripts\python.exe -m uvicorn src.main:app --reload --port 8000`)*
+
+   *   **Start the Streamlit Frontend (In a second terminal):**
+       ```bash
+       python -m streamlit run src/app.py
+       ```
+       *(If you have Python launcher path issues on Windows, run: `.venv\Scripts\python.exe -m streamlit run src/app.py`)*
+
+   Now, open `http://localhost:8501` in your browser.
 
 ---
 
