@@ -45,6 +45,8 @@ graph TD
 *   **The Eyes (CLIP Model)**: Generates high-dimensional image/text embeddings, enabling visual-semantic retrieval from the fashion catalog.
 *   **The Memory (Vector Store)**: Indexes, caches, and filters catalog embeddings (by gender, category, and similarity) for sub-millisecond retrieval.
 *   **The Matchmaker (Compatibility Engine)**: Uses rule-based logic derived from 25 expert-curated outfits to assemble matching items (topwear, bottomwear, footwear, accessories) based on the "Hero" item retrieved.
+*   **Configuration-Driven Styling Rules (`styling_config.json`)**: Decouples category mappings and compatibility pairing lists into an external JSON file, enabling code-free styling modifications.
+*   **Pre-cached Model Loader (`download_models.py`)**: Warm-starts the application by pre-downloading CLIP model weights during Docker builds, preventing runtime container launch delays.
 
 ---
 
@@ -58,7 +60,9 @@ DarexAI/
 │   ├── compatibility.py        # Styling Rules & Matchmaker Engine
 │   ├── config.py               # Constants, Paths & Hyperparameters
 │   ├── data_loader.py          # Catalog Preprocessing & Sanitization
+│   ├── download_models.py      # Pre-download weights for offline/container caching
 │   ├── embedder.py             # CLIP Embedding Extraction
+│   ├── styling_config.json     # Configuration file for categories & match rules
 │   └── vector_store.py         # Vector Indexing & Hybrid Retrieval
 │
 ├── tests/                      # Testing Suite (18 Unit & Integration Tests)
@@ -79,6 +83,7 @@ DarexAI/
 ├── Dockerfile                  # Single-container application build
 └── docker-compose.yml          # Container configuration with volume cache mounting
 ```
+
 
 ---
 
