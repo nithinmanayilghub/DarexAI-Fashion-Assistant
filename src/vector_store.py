@@ -47,8 +47,9 @@ class VectorStore:
             img_emb = embedder.get_image_embedding(img_path)
             img_embs.append(img_emb.flatten())
             
-            # Generate text embedding (combine name, category, brand, and description)
-            full_text = f"{row['name']} by {row['brand']}. Category: {row['category_label']}. {row['description']}"
+            # Generate text embedding using CLIP-Specific Prompt Engineering
+            desc_clean = str(row['description']).strip()
+            full_text = f"A studio catalog photograph of a {row['brand']} {row['category_label']} in a {row['occasion']} style. Details: {desc_clean}"
             txt_emb = embedder.get_text_embeddings(full_text)
             txt_embs.append(txt_emb.flatten())
             
@@ -56,8 +57,9 @@ class VectorStore:
         self.image_embeddings = np.array(img_embs)
         self.text_embeddings = np.array(txt_embs)
         
-        # Compute hybrid embeddings (average of normalized image and text features, re-normalized)
-        hybrid_raw = (self.image_embeddings + self.text_embeddings) / 2.0
+        # Compute hybrid embeddings using Weighted Vector Blending (alpha blending)
+        alpha = getattr(config, 'HYBRID_ALPHA', 0.70)
+        hybrid_raw = (alpha * self.image_embeddings) + ((1.0 - alpha) * self.text_embeddings)
         norms = np.linalg.norm(hybrid_raw, axis=1, keepdims=True)
         self.hybrid_embeddings = hybrid_raw / np.where(norms == 0, 1.0, norms)
         
