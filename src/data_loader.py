@@ -15,7 +15,13 @@ def load_products():
     df = pd.read_csv(config.PRODUCTS_CSV)
     
     # Fill missing values
-    df['rating'] = df['rating'].fillna(3.5)
+    # Impute missing ratings using the median of each specific category, with a fallback to the global median
+    category_medians = df.groupby('category')['rating'].transform('median')
+    global_median = df['rating'].median()
+    if pd.isna(global_median):
+        global_median = 3.5
+    df['rating'] = df['rating'].fillna(category_medians).fillna(global_median)
+    
     df['rating_count'] = df['rating_count'].fillna(0)
     df['description'] = df['description'].fillna("")
     df['tags_list'] = df['tags'].apply(clean_tags)
