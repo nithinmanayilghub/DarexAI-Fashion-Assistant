@@ -61,6 +61,13 @@ class CompatibilityEngine:
         curated_outfit, companions = self.get_curated_companions(hero_id, products_df)
         if curated_outfit:
             # We found an exact stylist curated outfit
+            # Identify the role the user's selected product plays in this curated outfit
+            user_role = 'hero'
+            for r in ['hero', 'second', 'layer', 'footwear', 'accessory_1', 'accessory_2']:
+                if curated_outfit.get(f"{r}_id") == hero_id:
+                    user_role = r
+                    break
+                    
             outfit = {
                 'source': 'Curated Outfit',
                 'outfit_id': curated_outfit['outfit_id'],
@@ -68,10 +75,10 @@ class CompatibilityEngine:
                 'palette': curated_outfit['palette'],
                 'stylist_rationale': curated_outfit['stylist_rationale'],
                 'items': {
-                    'hero': hero_product
+                    user_role: hero_product
                 }
             }
-            # Add companions
+            # Add companions without overwriting the user's product
             for role, prod in companions.items():
                 outfit['items'][role] = prod
             return outfit
