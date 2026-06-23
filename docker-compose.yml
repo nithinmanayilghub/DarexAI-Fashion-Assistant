@@ -1,16 +1,31 @@
 version: '3.8'
 
 services:
-  fashion-assistant:
+  backend:
     build: .
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000
     ports:
-      - "8501:8501"
+      - "8000:8000"
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
     volumes:
       # Cache Hugging Face models to avoid downloading on every run/build
       - hf_cache:/root/.cache/huggingface
       # Cache generated product embeddings
+      - embeddings_cache:/app/src
+    restart: always
+
+  frontend:
+    build: .
+    command: streamlit run src/app.py
+    ports:
+      - "8501:8501"
+    environment:
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend
+    volumes:
+      # Mount embeddings cache to allow reading image asset absolute paths
       - embeddings_cache:/app/src
     restart: always
 

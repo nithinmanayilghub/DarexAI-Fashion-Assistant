@@ -7,11 +7,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st
 import pandas as pd
 from PIL import Image
+import requests
 
-# Import local modules
-from src import config, data_loader, assistant
-from src.vector_store import VectorStore
-from src.compatibility import CompatibilityEngine
+# Base API endpoint configuration
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
 
 # Page configuration with a stylish title and icon
 st.set_page_config(
@@ -98,6 +97,7 @@ st.markdown("""
     /* Product card style */
     .product-card {
         border-radius: 12px;
+        border-radius: 12px;
         padding: 0.75rem;
         background: #fdfdfd;
         border: 1px solid #e2e8f0;
@@ -113,6 +113,7 @@ st.markdown("""
         min-height: 2.4rem;
         display: -webkit-box;
         -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
         -webkit-box-orient: vertical;
         overflow: hidden;
     }
@@ -177,26 +178,27 @@ st.markdown("""
 st.markdown("""
 <div class="header-container">
     <div class="header-title">✨ DARE XAI FASHION ASSISTANT</div>
-    <div class="header-subtitle">Your AI-Powered Stylist using CLIP Embeddings & Gemini Intelligence</div>
+    <div class="header-subtitle">Your AI-Powered Stylist using Decoupled FastAPI & Gemini Intelligence</div>
 </div>
 """, unsafe_allow_html=True)
 
-# Load data models
-@st.cache_resource
-def get_resources():
-    products_df = data_loader.load_products()
-    outfits_df = data_loader.load_outfits()
-    # Initialize the Vector store
-    v_store = VectorStore(products_df)
-    # Initialize Compatibility Engine
-    compat_engine = CompatibilityEngine(outfits_df)
-    return products_df, outfits_df, v_store, compat_engine
+# Helper to fetch backend health status
+def fetch_health():
+    try:
+        response = requests.get(f"{BACKEND_URL}/health", timeout=5)
+        if response.status_code == 200:
+            return response.json()
+    except Exception:
+        pass
+    return None
 
-try:
-    products_df, outfits_df, v_store, compat_engine = get_resources()
-except Exception as e:
-    st.error(f"Error loading system resources: {e}")
-    st.info("Make sure the dataset is placed under the 'ML-TASK/' folder.")
+# Fetch system stats
+health_data = fetch_health()
+is_active = health_data is not None
+
+if not is_active:
+    st.error("⚠️ Backend API Server is Offline!")
+    st.info(f"Make sure the FastAPI server is running on {BACKEND_URL} or customize via the `BACKEND_URL` environment variable.")
     st.stop()
 
 # Sidebar: Controls and Status
@@ -208,24 +210,26 @@ with st.sidebar:
     occasion_input = st.selectbox("Target Occasion", ["AI Auto", "Casual", "Office", "Party", "Wedding", "Festive", "Sports", "Vacation", "Winter"])
     
     st.markdown("---")
-    st.markdown("### 📊 Dataset Overview")
-    st.metric("Total Products", len(products_df))
-    st.metric("Curated Outfits", len(outfits_df))
+    st.markdown("### 📊 API Status & Health")
+    st.metric("Total Products", health_data.get("total_products", 0))
+    st.metric("Curated Outfits", health_data.get("total_outfits", 0))
+    st.write(f"**ML Accelerator:** `{health_data.get('pytorch_device', 'unknown').upper()}`")
+    st.write(f"**Embeddings Cache:** `{'Active ✅' if health_data.get('embeddings_cached') else 'Missing ⚠️'}`")
+    st.write(f"**Gemini Model:** `{'Connected ✅' if health_data.get('gemini_api_key_connected') else 'Offline (Rule Fallback) ⚠️'}`")
     
     st.markdown("---")
     st.markdown("### ⚙️ System Settings")
     if st.button("🔄 Rebuild Vector Index", help="Re-generate and cache CLIP embeddings for all catalog items"):
-        with st.spinner("Generating embeddings (this may take up to a minute)..."):
-            if os.path.exists(config.EMBEDDINGS_CACHE_PATH):
-                os.remove(config.EMBEDDINGS_CACHE_PATH)
-            # Re-initialize to trigger build
-            v_store.build_index()
-            st.success("Vector index successfully rebuilt and cached!")
-            st.rerun()
-            
-    # Display API Key status
-    api_key_status = "Connected ✅" if os.environ.get("GEMINI_API_KEY") else "Offline (Rule Fallback) ⚠️"
-    st.write(f"**Gemini Status:** {api_key_status}")
+        with st.spinner("Requesting API backend to rebuild embeddings..."):
+            try:
+                r = requests.post(f"{BACKEND_URL}/api/rebuild-index", timeout=120)
+                if r.status_code == 200:
+                    st.success("Vector index successfully rebuilt and cached!")
+                    st.rerun()
+                else:
+                    st.error(f"Rebuild failed: {r.text}")
+            except Exception as e:
+                st.error(f"Could not connect to backend: {e}")
 
 # Initialize chat session state
 if "messages" not in st.session_state:
@@ -301,99 +305,28 @@ if user_input := st.chat_input("Ask for style advice..."):
 if st.session_state.messages[-1]["role"] == "user":
     user_msg = st.session_state.messages[-1]["content"]
     
-    with st.spinner("Analyzing request and styling outfit..."):
-        # 1. Parse user intent using LLM (or regex fallback)
-        intent = assistant.parse_user_intent(user_msg)
-        
-        # Override filters if set in Sidebar
-        gender_filter = intent.get("gender")
-        if gender_input != "AI Auto":
-            gender_filter = gender_input.lower()
-            
-        occasion_filter = intent.get("occasion")
-        if occasion_input != "AI Auto":
-            occasion_filter = occasion_input.lower()
-            
-        search_query = intent.get("query", user_msg)
-        
-        # 2. Search for the best "Hero" item using the Vector Store matching query & filters
-        st.write(f"*Searching catalog for primary item matching: '{search_query}' (Gender: {gender_filter or 'Auto'}, Occasion: {occasion_filter or 'Auto'})...*")
-        
-        # Determine allowed categories for the hero item based on the user request
-        msg_lower = user_msg.lower()
-        footwear_kws = ["shoe", "sneaker", "jutti", "boot", "loafer", "sandal", "footwear", "flat", "heel", "slip-on"]
-        accessory_kws = ["necklace", "earring", "watch", "clutch", "handbag", "sunglass", "cap"]
-        
-        is_searching_footwear = any(kw in msg_lower for kw in footwear_kws)
-        is_searching_accessory = any(kw in msg_lower for kw in accessory_kws)
-        
-        if is_searching_footwear:
-            hero_categories = compat_engine.category_groups['footwear']
-        elif is_searching_accessory:
-            hero_categories = compat_engine.category_groups['accessory']
-        else:
-            # Default: Prioritize apparel first
-            hero_categories = compat_engine.category_groups['topwear'] + compat_engine.category_groups['one_piece']
-            
-        hits = v_store.search(
-            query_text=search_query,
-            gender=gender_filter,
-            categories=hero_categories,
-            top_k=3
-        )
-        
-        # If no targeted category hits found, search the whole database as a fallback
-        if not hits:
-            hits = v_store.search(
-                query_text=search_query,
-                gender=gender_filter,
-                top_k=3
-            )
-            
-        if not hits:
-            # Fallback if catalog search yields nothing
-            assistant_response = f"I searched our fashion catalog for *'{search_query}'* but couldn't find any direct matches. Could you try describing the style or clothing type in a different way? (e.g. 'linen shirt', 'saree', or 'formal trousers')"
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": assistant_response,
-                "outfit": None
-            })
-        else:
-            # Select the top matching product as the Hero item
-            hero_product = hits[0]["product"]
-            
-            # Validate if it is a reasonable semantic match/alternative for what the user requested
-            validation_res = assistant.validate_product_match(user_msg, hero_product)
-            if isinstance(validation_res, tuple):
-                is_match, explanation = validation_res
-            else:
-                is_match, explanation = validation_res, ""
+    with st.spinner("Connecting to Stylist API and styling outfit..."):
+        try:
+            payload = {
+                "message": user_msg,
+                "gender_override": gender_input,
+                "occasion_override": occasion_input
+            }
+            response = requests.post(f"{BACKEND_URL}/api/chat", json=payload, timeout=60)
+            if response.status_code == 200:
+                res_data = response.json()
+                assistant_response = res_data.get("content", "Sorry, I encountered an issue processing your request.")
+                recommended_outfit = res_data.get("outfit")
                 
-            # 3. Use Compatibility Engine to construct the full outfit
-            recommended_outfit = compat_engine.recommend_compatible_outfit(
-                hero_product=hero_product,
-                products_df=products_df,
-                v_store=v_store
-            )
-            
-            if not is_match:
-                # Politely explain the unavailability and propose the fallback alternative
-                if explanation:
-                    recommended_outfit['stylist_rationale'] = explanation
-                else:
-                    recommended_outfit['stylist_rationale'] = f"I'm sorry, we don't have the exact item you requested in our catalog. However, I've curated a compatible alternative using {hero_product['name']} by {hero_product['brand']}!"
-                    
-                assistant_response = f"I searched for your requested item, but it is not currently available in our catalog. Here is a stylish alternative combination I curated for you:"
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": assistant_response,
+                    "outfit": recommended_outfit
+                })
             else:
-                # Generate the personalized stylist explanation / rationale normally
-                styled_rationale = assistant.generate_styling_rationale(user_msg, recommended_outfit)
-                recommended_outfit['stylist_rationale'] = styled_rationale
-                assistant_response = f"Based on your request, I've curated a styled outfit starting with a primary hero item: **{hero_product['name']}**."
-            
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": assistant_response,
-                "outfit": recommended_outfit
-            })
+                st.error(f"Backend API returned an error: {response.text}")
+        except Exception as e:
+            st.error(f"Failed to connect to backend service: {e}")
+            st.info("Ensure the FastAPI backend is running.")
             
     st.rerun()

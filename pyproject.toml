@@ -19,4 +19,8 @@ dependencies = [
     "streamlit",
     "google-generativeai",
     "pytest",
+    "fastapi",
+    "uvicorn",
+    "requests",
 ]
+
