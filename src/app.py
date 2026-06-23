@@ -314,17 +314,30 @@ if st.session_state.messages[-1]["role"] == "user":
         # 2. Search for the best "Hero" item using the Vector Store matching query & filters
         st.write(f"*Searching catalog for primary item matching: '{search_query}' (Gender: {gender_filter or 'Auto'}, Occasion: {occasion_filter or 'Auto'})...*")
         
-        # Determine allowed categories for the hero item (exclude footwear and accessory to prioritize apparel first)
-        all_apparel_cats = compat_engine.category_groups['topwear'] + compat_engine.category_groups['one_piece']
+        # Determine allowed categories for the hero item based on the user request
+        msg_lower = user_msg.lower()
+        footwear_kws = ["shoe", "sneaker", "jutti", "boot", "loafer", "sandal", "footwear", "flat", "heel", "slip-on"]
+        accessory_kws = ["necklace", "earring", "watch", "clutch", "handbag", "sunglass", "cap"]
         
+        is_searching_footwear = any(kw in msg_lower for kw in footwear_kws)
+        is_searching_accessory = any(kw in msg_lower for kw in accessory_kws)
+        
+        if is_searching_footwear:
+            hero_categories = compat_engine.category_groups['footwear']
+        elif is_searching_accessory:
+            hero_categories = compat_engine.category_groups['accessory']
+        else:
+            # Default: Prioritize apparel first
+            hero_categories = compat_engine.category_groups['topwear'] + compat_engine.category_groups['one_piece']
+            
         hits = v_store.search(
             query_text=search_query,
             gender=gender_filter,
-            categories=all_apparel_cats,
+            categories=hero_categories,
             top_k=3
         )
         
-        # If no apparel found, search the whole database
+        # If no targeted category hits found, search the whole database as a fallback
         if not hits:
             hits = v_store.search(
                 query_text=search_query,
