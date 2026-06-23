@@ -1,0 +1,21 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Caches
+src/product_embeddings.pkl
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Local Environment Configurations (contains API keys)
+.env
+.env.local
+.env.*
+.flaskenv

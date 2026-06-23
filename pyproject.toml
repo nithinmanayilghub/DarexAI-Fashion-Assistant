@@ -1,0 +1,22 @@
+[project]
+name = "darexai-fashion-recommender"
+version = "0.1.0"
+description = "AI Fashion Outfit Recommendation System"
+readme = "ML-TASK/README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "pandas",
+    "openpyxl",
+    "numpy",
+    "jupyterlab",
+    "matplotlib",
+    "pillow",
+    "scikit-learn",
+    "torch",
+    "torchvision",
+    "transformers",
+    "seaborn>=0.13.2",
+    "streamlit",
+    "google-generativeai",
+    "pytest",
+]

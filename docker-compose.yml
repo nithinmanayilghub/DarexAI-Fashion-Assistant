@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  fashion-assistant:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    volumes:
+      # Cache Hugging Face models to avoid downloading on every run/build
+      - hf_cache:/root/.cache/huggingface
+      # Cache generated product embeddings
+      - embeddings_cache:/app/src
+    restart: always
+
+volumes:
+  hf_cache:
+  embeddings_cache:
