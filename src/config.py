@@ -13,8 +13,9 @@ IMAGES_DIR = os.path.join(DATA_DIR, "images")
 EMBEDDINGS_CACHE_PATH = os.path.join(BASE_DIR, "src", "product_embeddings.pkl")
 
 # Machine Learning Configurations
+import torch
 CLIP_MODEL_NAME = "openai/clip-vit-base-patch32"
-device = "cpu"  # Keep default to cpu for maximum compatibility on CPU-only local environments
+device = "cuda" if torch.cuda.is_available() else "cpu"  # Auto-detect GPU acceleration
 HYBRID_ALPHA = 0.05  # Weight given to visual image embeddings (relative to text description)
 
 # Gemini API Model Configuration

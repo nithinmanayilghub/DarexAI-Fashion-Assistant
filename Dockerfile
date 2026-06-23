@@ -25,6 +25,9 @@ RUN uv pip install --system -r pyproject.toml
 COPY src/ ./src/
 COPY ML-TASK/ ./ML-TASK/
 
+# Pre-download and cache CLIP weights to prevent runtime container cold starts
+RUN python src/download_models.py
+
 # Set Python path to find the src module
 ENV PYTHONPATH="/app"
 
