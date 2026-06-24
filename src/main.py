@@ -3,7 +3,7 @@ import sys
 import math
 import numpy as np
 import pandas as pd
-from typing import Optional
+from typing import Optional, Dict, List
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -65,6 +65,59 @@ def startup_event():
     except Exception as e:
         print(f"Startup loading failed: {e}")
 
+try:
+    from pydantic import ConfigDict
+except ImportError:
+    ConfigDict = None
+
+class ProductItem(BaseModel):
+    id: str
+    name: str
+    brand: str
+    category: str
+    category_label: str
+    gender: str
+    occasion: str
+    wear_type: str
+    price_inr: float
+    rating: Optional[float] = None
+    rating_count: Optional[float] = None
+    description: Optional[str] = None
+    image: Optional[str] = None
+    tags: Optional[str] = None
+    tags_list: Optional[List[str]] = None
+    absolute_image_path: Optional[str] = None
+
+    if ConfigDict is not None:
+        model_config = ConfigDict(extra="allow")
+    else:
+        class Config:
+            extra = "allow"
+
+class OutfitDetails(BaseModel):
+    source: str
+    outfit_id: str
+    theme: str
+    palette: str
+    stylist_rationale: str
+    items: Dict[str, ProductItem]
+
+    if ConfigDict is not None:
+        model_config = ConfigDict(extra="allow")
+    else:
+        class Config:
+            extra = "allow"
+
+class ChatResponse(BaseModel):
+    content: str
+    outfit: Optional[OutfitDetails] = None
+
+    if ConfigDict is not None:
+        model_config = ConfigDict(extra="allow")
+    else:
+        class Config:
+            extra = "allow"
+
 class ChatRequest(BaseModel):
     message: str
     gender_override: Optional[str] = None
@@ -85,7 +138,7 @@ def health():
         "total_outfits": len(outfits_df)
     }
 
-@app.post("/api/chat")
+@app.post("/api/chat", response_model=ChatResponse)
 def chat(payload: ChatRequest):
     global products_df, outfits_df, v_store, compat_engine
     if v_store is None:
@@ -178,10 +231,11 @@ def chat(payload: ChatRequest):
         recommended_outfit['stylist_rationale'] = styled_rationale
         assistant_response = f"Based on your request, I've curated a styled outfit starting with a primary hero item: **{hero_product['name']}**."
         
-    return sanitize_for_json({
+    sanitized = sanitize_for_json({
         "content": assistant_response,
         "outfit": recommended_outfit
     })
+    return ChatResponse(**sanitized)
 
 @app.post("/api/rebuild-index")
 def rebuild_index():
