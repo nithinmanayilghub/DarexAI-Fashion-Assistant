@@ -172,9 +172,7 @@ def validate_product_match(user_message, product):
             
         if not is_match:
             requested_item = " ".join(keywords).title() if keywords else "requested item"
-            if "dhothi" in msg_lower or "dhoti" in msg_lower:
-                requested_item = "traditional Kerala Dhoti"
-            explanation = f"I'm sorry, we don't have a {requested_item} in our current catalog. However, I can suggest a traditional {prod.get('name', 'alternative')} as a perfect alternative!"
+            explanation = f"I'm sorry, the requested '{requested_item}' is not available in our catalog. However, I can suggest the '{prod.get('name', 'alternative')}' as a perfect alternative!"
             return False, explanation
         return True, ""
 
