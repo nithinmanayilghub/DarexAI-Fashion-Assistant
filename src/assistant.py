@@ -139,15 +139,47 @@ def validate_product_match(user_message, product):
     Checks if the retrieved product is actually a valid semantic match for what the user requested,
     or if it's a completely different item that was pulled because it was the closest vector.
     """
-    if not has_gemini:
-        # Fallback in offline mode: if the user explicitly requested "dhoti" or "dhothi",
-        # and the matching product name does not contain "dhoti" or "dhothi", we say it's not a match.
-        msg_lower = user_message.lower()
-        if "dhoti" in msg_lower or "dhothi" in msg_lower:
-            prod_name = product["name"].lower()
-            if "dhoti" not in prod_name and "dhothi" not in prod_name:
-                return False, "I'm sorry, we don't have a traditional Kerala Dhoti in our current catalog. However, I can suggest a traditional off-white Roman Silk Embroidered Kurta set as a perfect festive alternative!"
+    def check_dynamic_fallback(msg, prod):
+        msg_lower = msg.lower()
+        ignored = {
+            "i", "want", "need", "suggest", "recommend", "looking", "for", "outfit", 
+            "style", "a", "an", "the", "formal", "casual", "party", "wedding", 
+            "office", "sports", "festive", "winter", "wear", "with", "and", "or", 
+            "in", "to", "show", "me", "some", "best", "traditional", "modern", "looking"
+        }
+        words = re.findall(r"\b\w+\b", msg_lower)
+        keywords = [w for w in words if w not in ignored]
+        if not keywords:
+            keywords = [w for w in words if len(w) > 2]
+            
+        product_features = " ".join([
+            str(prod.get("name", "")),
+            str(prod.get("brand", "")),
+            str(prod.get("category", "")),
+            str(prod.get("category_label", "")),
+            str(prod.get("description", "")),
+            " ".join(prod.get("tags_list", [])) if isinstance(prod.get("tags_list"), list) else ""
+        ]).lower()
+        
+        is_match = False
+        if keywords:
+            for kw in keywords:
+                if kw in product_features or any(kw in f or f in kw for f in product_features.split()):
+                    is_match = True
+                    break
+        else:
+            is_match = True
+            
+        if not is_match:
+            requested_item = " ".join(keywords).title() if keywords else "requested item"
+            if "dhothi" in msg_lower or "dhoti" in msg_lower:
+                requested_item = "traditional Kerala Dhoti"
+            explanation = f"I'm sorry, we don't have a {requested_item} in our current catalog. However, I can suggest a traditional {prod.get('name', 'alternative')} as a perfect alternative!"
+            return False, explanation
         return True, ""
+
+    if not has_gemini:
+        return check_dynamic_fallback(user_message, product)
 
     prompt = f"""
     A user requested a fashion item: "{user_message}"
@@ -173,10 +205,4 @@ def validate_product_match(user_message, product):
         return data.get("is_match", True), data.get("stylist_explanation", "")
     except Exception as e:
         print(f"Error in validate_product_match: {e}")
-        # Rule-based fallback
-        msg_lower = user_message.lower()
-        if "dhoti" in msg_lower or "dhothi" in msg_lower:
-            prod_name = product["name"].lower()
-            if "dhoti" not in prod_name and "dhothi" not in prod_name:
-                return False, "I'm sorry, we don't have a traditional Kerala Dhoti in our current catalog. However, I can suggest a traditional off-white Roman Silk Embroidered Kurta set as a perfect festive alternative!"
-        return True, ""
+        return check_dynamic_fallback(user_message, product)
