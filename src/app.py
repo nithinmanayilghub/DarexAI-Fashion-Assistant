@@ -177,8 +177,8 @@ st.markdown("""
 # App Header
 st.markdown("""
 <div class="header-container">
-    <div class="header-title">✨ DARE XAI FASHION ASSISTANT</div>
-    <div class="header-subtitle">Your AI-Powered Stylist using Decoupled FastAPI & Gemini Intelligence</div>
+    <div class="header-title">✨ DAREXAI FASHION ASSISTANT</div>
+    <div class="header-subtitle">Your AI-Powered Stylist </div>
 </div>
 """, unsafe_allow_html=True)
 
